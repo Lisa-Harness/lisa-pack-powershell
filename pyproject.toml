@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lisa_packs*", "lisa_packs.powershell*"]
+
+[tool.setuptools.package-data]
+"lisa_packs" = ["*"]
+"lisa_packs.powershell" = [
+    "tools/**/*.yml",
+    "operations/**/*.yml",
+    "content/**/*.md",
+    "content/**/*.tmpl",
+    "modes/**/*.md",
+]
+
+[project]
+name = "lisa-pack-powershell"
+version = "0.1.0"
+description = "PowerShell execution capability for Lisa - persistent, agent-optimized pwsh session with layered Windows containment"
+requires-python = ">=3.11"
+dependencies = ["lisa-harness-kernel", "lisa-harness-sdk"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-mock>=3.14.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["lisa_packs/powershell/tests"]
+markers = [
+    "live: runs a real pwsh session and exercises containment composition",
+]
+
+[project.entry-points."lisa.extensions.content_roots"]
+powershell = "lisa_packs.powershell:get_content_root"

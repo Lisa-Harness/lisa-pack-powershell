@@ -1,0 +1,9 @@
+operation_id: pwsh_sandbox_facts
+description: "Resolve the pwsh session and publish its containment fact for the approval engine."
+pack_id: lisa-pack-powershell
+effect: read
+approval_required: false
+mode_allowlist: [shell_pwsh]
+timeout_seconds: 10
+max_calls_per_turn: 0
+exportable: false

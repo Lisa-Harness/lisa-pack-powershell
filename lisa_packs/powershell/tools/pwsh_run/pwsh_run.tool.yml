@@ -1,0 +1,15 @@
+tool_id: pwsh_run
+pack_id: lisa-pack-powershell
+module_path: lisa_packs.powershell.tools.pwsh_run.pwsh_run
+description: "Run one script, a background job, or a batch of independent scripts in a persistent pwsh session. Cwd and named variables carry across calls; empty success is explicit; large output spills to a file path; timeouts background the work instead of killing it. Prefer `commands` for independent read-only fan-outs. Posture depends on tier: bare = real permanent host changes (confirm before mutating); basic = child inside a Job Object (kill-on-close, resource caps); contained = adds a nested ConstrainedLanguage runspace (no .NET reflection, no Add-Type, network/file classes blocked - core cmdlets still work)."
+effect: execute
+approval_required: true
+approval_preview: "run PowerShell command(s)"
+display_template: "{command}"
+stream_output: true
+exportable: true
+# Kernel wrapper timeout: 0 disables the wrapper (sdk/AUTHORING.md contract).
+# pwsh_run self-bounds on every path: the model's own timeout_seconds parameter
+# (1-300s) is the visible wait and slow commands are adopted as jobs instead
+# of killed, with streaming output publishing progress on lisa.tool_output.
+timeout_seconds: 0

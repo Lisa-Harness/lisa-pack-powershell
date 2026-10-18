@@ -1,0 +1,92 @@
+# Lisa agent-optimized pwsh wrapper (per invocation).
+# Rendered with per-call substitutions by lisa_packs.powershell.priming.
+# Not for interactive human use.
+# Placeholders: %%SENTINEL%%, %%STATE_FILE%%, %%USER_SCRIPT%%, %%WAIT_MS%%, %%CAPTURE_VARS%%, %%CLM%%
+
+$ErrorActionPreference = 'Continue'
+$__sentinel = '%%SENTINEL%%'
+$__captureVars = $true  # %%CAPTURE_VARS%%
+
+# Replay last call's state (cwd + named variables), policy-permitted.
+if (Test-Path -LiteralPath '%%STATE_FILE%%') {
+    . '%%STATE_FILE%%'
+}
+
+# The user script runs IN THIS SCOPE (dot-invoked) so its variable writes
+# persist to the session state; wrapper machinery is $__-prefixed and
+# excluded from capture.
+$__lisa_user = Get-Content -LiteralPath '%%USER_SCRIPT%%' -Raw
+$__lisa_before = @{}
+if ($__captureVars) {
+    Get-Variable |
+        Where-Object { $_.Name -notlike '__*' } |
+        Where-Object { $_.Name -notin @('foreach','args','input','matches','myinv','pid','profile','stacktrace','error','host','home','true','false','null','question','lastexitcode','erroractionpreference','progresspreference','informationpreference','warningpreference','verbosepreference','debugpreference','whatifpreference','confirmpreference') } |
+        ForEach-Object { $__lisa_before[$_.Name] = [string]$_.Value }
+}
+
+$__lisa_out = $null
+$__lisa_errs = New-Object System.Collections.Generic.List[string]
+$__lisa_rc = 0
+$__lisa_escaped = (Get-Location).Path.Replace("'", "''")
+try {
+    if ('%%CLM%%' -eq '1') {
+        # Contained path: a nested runspace whose language mode is enforced.
+        # Variable carry is intentionally NOT supported on this path (the
+        # nested runspace starts clean; the state-replay cwd is re-applied
+        # INSIDE the nested script preamble, Set-Location being a core
+        # cmdlet). SessionStateProxy.Path.SetLocation is deliberately NOT
+        # used: it kills pwsh silently under -NonInteractive -File (verified
+        # 2026-10-17).
+        $__iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault2()
+        $__iss.LanguageMode = [System.Management.Automation.PSLanguageMode]::ConstrainedLanguage
+        $__rs = [System.Management.Automation.Runspaces.RunspaceFactory]::CreateRunspace($__iss)
+        $__rs.Open()
+        $__ps = [System.Management.Automation.PowerShell]::Create($__rs)
+        $__lisa_here = (Get-Location).Path
+        $__lisa_nested = "Set-Location -LiteralPath '$($__lisa_escaped)'; $__lisa_user"
+        $null = $__ps.AddScript($__lisa_nested)
+        $__async = $__ps.BeginInvoke()
+        $null = $__async.AsyncWaitHandle.WaitOne(%%WAIT_MS%%)
+        $__lisa_out = $__ps.EndInvoke($__async)
+        foreach ($__e in $__ps.Streams.Error) {
+            $__lisa_errs.Add("$($__e.ToString() -replace '[\r\n]+', ' ')")
+        }
+        $__ps.Dispose()
+        $__rs.Close()
+    } else {
+        # Bare/basic path: dot-run the user script in THIS scope so variable
+        # writes are capturable for cross-call carry.
+        $__lisa_out = . ([scriptblock]::Create($__lisa_user))
+    }
+} catch {
+    $__lisa_errs.Add("$($_.ToString() -replace '[\r\n]+', ' ')")
+}
+$__lisa_rc = if ($__lisa_errs.Count -gt 0) { 1 } else { 0 }
+
+# Emit results in one of two capture modes so the host parser never guesses.
+foreach ($__item in @($__lisa_out)) {
+    if ($null -eq $__item) { continue }
+    $__json = $null
+    try { $__json = ConvertTo-Json -InputObject $__item -Depth 5 -Compress -ErrorAction Stop } catch {}
+    if ($__json) { Write-Output ("{0}obj {1}" -f $__sentinel, $__json) }
+    else { Write-Output ("{0}text {1}" -f $__sentinel, ([string]$__item)) }
+}
+
+# State capture: cwd always; named variables only when policy permits.
+if ($__captureVars) {
+    $__lisa_after = @{}
+    Get-Variable |
+        Where-Object { $_.Name -notlike '__*' } |
+        Where-Object { $_.Name -notin @('foreach','args','input','matches','myinv','pid','profile','stacktrace','error','host','home','true','false','null','question','lastexitcode','erroractionpreference','progresspreference','informationpreference','warningpreference','verbosepreference','debugpreference','whatifpreference','confirmpreference') } |
+        ForEach-Object { $__lisa_after[$_.Name] = [string]$_.Value }
+    foreach ($__k in $__lisa_after.Keys) {
+        if (-not $__lisa_before.ContainsKey($__k) -or $__lisa_before[$__k] -ne $__lisa_after[$__k]) {
+            Write-Output ("{0}statevar {1}={2}" -f $__sentinel, $__k, ($__lisa_after[$__k] -replace "'", "''"))
+        }
+    }
+}
+Write-Output ("{0}state=cwd={1}" -f $__sentinel, ((Get-Location).Path -replace "'", "''"))
+
+foreach ($__e in $__lisa_errs) { Write-Output ("{0}err {1}" -f $__sentinel, $__e) }
+Write-Output ("{0}rc={1}" -f $__sentinel, $__lisa_rc)
+exit $__lisa_rc
