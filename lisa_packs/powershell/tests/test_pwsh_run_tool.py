@@ -8,6 +8,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from kernel.capability_binding import ExecutionFloorView
 from kernel.models import ToolExecutionContext
 
 from lisa_packs.powershell import executor as executor_mod
@@ -28,6 +29,7 @@ def _ctx(tmp_path: Path) -> ToolExecutionContext:
         mode_id="shell_pwsh",
         query="test",
         pack_config={},
+        execution_floor_for=lambda _tool_id: ExecutionFloorView(execution="bare"),
     )
 
 
