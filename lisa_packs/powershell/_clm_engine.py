@@ -6,7 +6,7 @@ primitives:
 
 - **Job Object** (``winjob``): kill-on-close child tree + resource caps.
 - **Nested CLM runspace**: the wrapper template
-  (``content/profile/wrapper.ps1.tmpl``) opens a nested runspace whose
+  (``content/shell/wrapper.ps1.tmpl``) opens a nested runspace whose
   ``LanguageMode = ConstrainedLanguage`` and runs the user script inside
   it. Verified blocked: ``Add-Type``, P/Invoke member definitions, .NET
   methods-with-arguments, ``New-Object`` of network/file classes,

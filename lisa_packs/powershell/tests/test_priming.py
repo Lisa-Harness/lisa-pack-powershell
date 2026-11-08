@@ -10,7 +10,7 @@ from lisa_packs.powershell.priming import SessionPriming
 def test_priming_paths_live_under_run(tmp_path: Path) -> None:
     priming = SessionPriming(data_dir=tmp_path, session_key="key1")
     assert str(priming.log_path).startswith(str(tmp_path / "run" / "key1"))
-    assert priming.state_path.parent.name == "profile"
+    assert priming.state_path.parent.name == "shell"
 
 
 def test_sentinel_unique_across_sessions(tmp_path: Path) -> None:

@@ -1,4 +1,4 @@
-"""Render the Lisa state/profile files for one pwsh session.
+"""Render the Lisa state/shell files for one pwsh session.
 
 No rc template is needed: pwsh children run with ``-NoProfile`` for
 determinism, and per-session state (cwd + named variables) replays through
@@ -42,7 +42,7 @@ class SessionPriming:
     @property
     def state_path(self) -> Path:
         """Replayed at the top of each wrapper invocation."""
-        return self.run_dir / "profile" / f"state-{self.session_key}.ps1"
+        return self.run_dir / "shell" / f"state-{self.session_key}.ps1"
 
     @property
     def sentinel(self) -> str:

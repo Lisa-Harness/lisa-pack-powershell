@@ -6,7 +6,7 @@ sentinel-tagged results, and tees everything to the per-session audit log.
 Containment composes in: the wrapper child is Job-Object contained, and
 ``contained`` sessions additionally wrap the user script in a nested
 ConstrainedLanguage runspace inside the wrapper (see the ``%%CLM%%``
-branch of ``content/profile/wrapper.ps1.tmpl``).
+branch of ``content/shell/wrapper.ps1.tmpl``).
 """
 
 from __future__ import annotations
@@ -77,7 +77,7 @@ def render_wrapper(
     """Render ``wrapper.ps1.tmpl`` with per-call substitutions."""
     from lisa_packs.powershell import get_content_root
 
-    template_path = get_content_root() / "content" / "profile" / "wrapper.ps1.tmpl"
+    template_path = get_content_root() / "content" / "shell" / "wrapper.ps1.tmpl"
     if not template_path.is_file():
         raise RuntimeError(f"powershell pack missing wrapper template: {template_path}")
     body = template_path.read_text(encoding="utf-8")
