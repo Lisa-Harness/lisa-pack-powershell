@@ -70,6 +70,51 @@ equivalent) is deferred — the plan is VSS snapshots.
 The floor comes from the harness (`execution_floor_for("pwsh_run")`); a
 missing floor never authorizes bare execution. The model may only tighten.
 
+## Sandbox capability: this pack is the Windows sandbox implementation
+
+On Linux, `lisa-pack-bwrap` owns the sandbox capability
+(`providers.capabilities.sandbox`). Windows has no bubblewrap, so this pack
+declares itself as the implementation there:
+
+| Entry point | Contribution |
+| --- | --- |
+| `lisa.extensions.sandbox` | `sandbox.describe_sandbox` — implementation declaration (floor validator + runner) |
+
+`describe_sandbox()` returns `None` on a host without Job Objects, which
+discovery treats as a documented opt-out: installing this pack next to bwrap
+never makes sandbox ownership ambiguous. On Windows a session selects it with
+`providers.capabilities.sandbox: lisa-pack-powershell`.
+
+### Floor validation is honest about what a Job Object cannot do
+
+Job Objects control process lifetime and resource caps — not filesystem
+visibility, network namespaces, or IPC. The declared `validate_floor`
+therefore *rejects* axes this implementation cannot enforce (`network`,
+`device`, `ipc`, `tmpfs_budget_bytes`, `timeout_ceiling_seconds`, and any path
+access other than `rw`) with a load-time error naming the axis. A session that
+copies a Linux floor verbatim gets told exactly which line is unenforceable
+instead of quietly running a weaker sandbox.
+
+### Tool: `pwsh_argv_run` (the containment runner)
+
+This is the argv-in, contained-result-out primitive a composing pack uses — the
+Windows counterpart of `bwrap_run` for a bare process. It is deliberately not
+`pwsh_run`: no script text, no session state, no background adoption. It takes
+`argv`, `cwd`, and `timeout_seconds`, spawns the process inside a kill-on-close
+Job Object, and returns verified evidence:
+
+```json
+{"sandboxed": true, "contained": true, "tier": "basic",
+ "persistence": "direct-write", "cwd": "...",
+ "writable_paths": ["..."], "return_code": 0, ...}
+```
+
+The result is only returned when the child was actually assigned to its job and
+ran in the requested directory; otherwise the tool errors. That is what lets
+`lisa-pack-coding` run its configured checks contained on Windows through the
+same provider-neutral runner contract it uses with bwrap on Linux, without
+either pack naming the other.
+
 ## Mode: `shell_pwsh`
 
 Routable via `/pwsh`, `/powershell`, or PowerShell-intent keywords.

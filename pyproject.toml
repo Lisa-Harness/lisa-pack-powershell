@@ -39,3 +39,6 @@ markers = [
 
 [project.entry-points."lisa.extensions.content_roots"]
 powershell = "lisa_packs.powershell:get_content_root"
+
+[project.entry-points."lisa.extensions.sandbox"]
+powershell = "lisa_packs.powershell.sandbox:describe_sandbox"

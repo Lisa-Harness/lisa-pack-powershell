@@ -72,3 +72,20 @@ def test_pwsh_run_declares_itself_self_bounding() -> None:
     assert _declared_timeout_ceiling("pwsh_run") == 0
     catalog = json.loads(build_tool_catalog_json(resolve_tool_roots([get_content_root()])))
     assert catalog["pwsh_run"]["stream_output"] is True
+
+
+def test_pwsh_argv_run_tool_discovered() -> None:
+    """The contained-argv runner is the primitive composing packs dispatch to."""
+    catalog = json.loads(build_tool_catalog_json(resolve_tool_roots([get_content_root()])))
+    assert "pwsh_argv_run" in catalog
+    tool = catalog["pwsh_argv_run"]
+    assert tool["tool_id"] == "pwsh_argv_run"
+    assert tool["pack_id"] == "lisa-pack-powershell"
+    assert tool["effect"] == "execute"
+    # Composed through a delegated dispatch that already passed the caller's
+    # approval boundary; it is not a model-facing tool.
+    assert tool["approval_required"] is False
+    assert tool["exportable"] is False
+    assert tool["module_path"] == "lisa_packs.powershell.tools.pwsh_argv_run.pwsh_argv_run"
+    # Self-bounding: its own timeout kills the process tree.
+    assert int(tool["timeout_seconds"]) == 0
