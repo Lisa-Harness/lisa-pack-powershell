@@ -50,6 +50,14 @@ class Parameters(BaseModel):
         le=3600,
         description="Hard timeout; the process tree is killed, never backgrounded.",
     )
+    network: str | None = Field(
+        default=None,
+        description=(
+            "Network posture forwarded from a floor allowance. Job Objects "
+            "cannot deny network on Windows; the floor validator rejects deny "
+            "at load, so this field is an attestation passthrough only."
+        ),
+    )
 
 
 async def execute(ctx: ToolExecutionContext) -> ToolResult:
@@ -86,6 +94,7 @@ async def execute(ctx: ToolExecutionContext) -> ToolResult:
         return ToolResult(tool_id=TOOL_ID, error=f"contained argv run failed: {exc}")
 
     payload: dict[str, Any] = result.as_output_json()
+    payload["network"] = params.network or "allow"
     if not result.contained:
         return ToolResult(
             tool_id=TOOL_ID,

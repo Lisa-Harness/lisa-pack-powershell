@@ -1,0 +1,40 @@
+# Offline powershell-pack scenario: the sandbox capability resolves and
+# proves containment through a real pwsh child.
+#
+# The scripted model (model/pwsh_sandbox.py) drives the shell_pwsh mode's
+# model-facing tool (pwsh_run, approval-gated — the scenario approves it).
+# The oracles assert from bundle evidence: no "sandbox policy is inert"
+# runtime error (the 2026-11-14 regression: the session selected the pack
+# but no implementation was registered, so every contained consumer failed
+# closed), the tool executed with a receipt, and the exchange text carries
+# the containment stamp the tool proved live.
+#
+# Windows-only: pwsh + the Job Object API are host requirements. On a
+# non-Windows host pwsh_run reports its missing-pwsh error, which the
+# no_runtime_errors oracle still satisfies (a clean refusal, not a crash).
+id: powershell/sandbox-facts-scripted
+session_context: session_context.md
+model:
+  script: model/pwsh_sandbox.py
+packs:
+  - lisa-pack-core
+  - lisa-pack-powershell
+approvals:
+  approve: ["pwsh_run"]
+turns:
+  - "pwsh: run $PSVersionTable.PSVersion.ToString() and report the containment stamp verbatim."
+budgets:
+  max_messages: 6
+  max_continues: 0
+  max_yield_replies: 0
+  wall_clock_s: 600
+oracles:
+  hygiene:
+    - not_aborted: {}
+    - no_turn_errors: {}
+    - no_runtime_errors: {}
+    - max_exchanges: {n: 6}
+  dispatch:
+    - receipt: {capability: pwsh_run, min: 1}
+  containment:
+    - exchange_contains: {text: "contained"}

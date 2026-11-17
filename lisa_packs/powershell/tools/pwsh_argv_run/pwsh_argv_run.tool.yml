@@ -1,14 +1,13 @@
 tool_id: pwsh_argv_run
 pack_id: lisa-pack-powershell
 module_path: lisa_packs.powershell.tools.pwsh_argv_run.pwsh_argv_run
-description: "Run one explicit argument vector in a working directory inside a Windows Job Object (kill-on-close process tree, no shell). This is the contained-argv primitive a composing pack uses; it is not a shell session — state does not carry across calls, and a timeout kills the tree instead of backgrounding it. The result carries verified containment evidence (sandboxed, contained, tier, cwd, writable_paths, persistence: direct-write): a result is only returned when the child was actually assigned to its job and ran in the requested directory."
+description: "Run one explicit argument vector in a working directory inside a Windows Job Object (kill-on-close process tree, no shell). This is the contained-argv primitive a composing pack uses; it is not a shell session — state does not carry across calls, and a timeout kills the tree instead of backgrounding it. Approval-free composed backend: the dispatching consumer (a session-selected sandbox runner, e.g. coding-pack checks) already carried the user's approval, so re-pausing mid-dispatch would deadlock an approved flow. The result carries verified containment evidence (sandboxed, contained, tier, cwd, writable_paths, persistence: direct-write, network): a result is only returned when the child was actually assigned to its job and ran in the requested directory."
 effect: execute
 approval_required: false
-# Consumers (a pack's configured checks) compose through a delegated dispatch
-# that already passed its own approval boundary; the model never calls this
-# directly, so no separate prompt is layered on top. Not exportable for
-# model-facing cross-pack use — the runner surface is the contract.
 exportable: false
-# Kernel wrapper timeout: 0 disables the wrapper; the tool self-bounds through
-# its own timeout_seconds parameter, which kills the process tree.
+mode_allowlist: null
+stream_output: true
+# Kernel wrapper timeout: 0 disables the wrapper (sdk/AUTHORING.md contract).
+# The tool self-bounds: its own timeout_seconds parameter (1-3600s) is the
+# visible wait, then the Job Object terminates the whole child tree.
 timeout_seconds: 0
