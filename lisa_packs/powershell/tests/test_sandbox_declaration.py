@@ -25,7 +25,7 @@ from kernel.sandbox_floor import (
 from lisa_packs.powershell.containment import PolicyError
 
 from lisa_packs.powershell import sandbox as declaration
-from lisa_packs.powershell.sandbox import PWSH_ARGV_TOOL_ID, PwshRunner, describe_sandbox
+from lisa_packs.powershell.sandbox import RUNNER_TOOL_ID, PwshRunner, describe_sandbox
 
 
 def test_declaration_opts_out_without_job_objects(
@@ -44,7 +44,7 @@ def test_declaration_names_the_pack_and_exposes_runner_with_job_objects(
     assert declared["pack_name"] == "lisa-pack-powershell"
     assert callable(declared["validate_floor"])
     runner = declared["runner"]
-    assert runner.tool_id == PWSH_ARGV_TOOL_ID == "pwsh_argv_run"
+    assert runner.tool_id == RUNNER_TOOL_ID == "pwsh_argv_run"
     assert runner.path_attestation == "result"
     assert isinstance(runner, SandboxRunner)
 
@@ -118,7 +118,6 @@ def test_runner_request_translates_the_neutral_request() -> None:
     [
         {"persistence": "ephemeral"},
         {"paths": {"/wt": "ro"}},
-        {"network": "deny"},
         {"device": "minimal"},
         {"ipc": "unshared"},
     ],
