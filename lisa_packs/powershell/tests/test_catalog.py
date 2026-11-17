@@ -33,6 +33,21 @@ def test_pwsh_run_tool_discovered() -> None:
     assert "background" in tool["description"].lower() or "batch" in tool["description"].lower()
 
 
+def test_pwsh_argv_run_tool_discovered() -> None:
+    roots = resolve_tool_roots([get_content_root()])
+    catalog = json.loads(build_tool_catalog_json(roots))
+    assert "pwsh_argv_run" in catalog
+    tool = catalog["pwsh_argv_run"]
+    assert tool["pack_id"] == "lisa-pack-powershell"
+    assert tool["effect"] == "execute"
+    # Approval-free composed backend: the dispatching consumer (a session
+    # sandbox runner) already carried the user's approval.
+    assert tool["approval_required"] is False
+    assert tool["exportable"] is False
+    assert tool["module_path"] == "lisa_packs.powershell.tools.pwsh_argv_run.pwsh_argv_run"
+    assert tool["timeout_seconds"] == 0
+
+
 def test_shell_pwsh_mode_routable() -> None:
     """Frontmatter is load-bearing: command_pattern + routable must survive edits."""
     roots = resolve_mode_roots([get_content_root()])
@@ -74,18 +89,28 @@ def test_pwsh_run_declares_itself_self_bounding() -> None:
     assert catalog["pwsh_run"]["stream_output"] is True
 
 
-def test_pwsh_argv_run_tool_discovered() -> None:
-    """The contained-argv runner is the primitive composing packs dispatch to."""
-    catalog = json.loads(build_tool_catalog_json(resolve_tool_roots([get_content_root()])))
-    assert "pwsh_argv_run" in catalog
-    tool = catalog["pwsh_argv_run"]
-    assert tool["tool_id"] == "pwsh_argv_run"
-    assert tool["pack_id"] == "lisa-pack-powershell"
-    assert tool["effect"] == "execute"
-    # Composed through a delegated dispatch that already passed the caller's
-    # approval boundary; it is not a model-facing tool.
-    assert tool["approval_required"] is False
-    assert tool["exportable"] is False
-    assert tool["module_path"] == "lisa_packs.powershell.tools.pwsh_argv_run.pwsh_argv_run"
-    # Self-bounding: its own timeout kills the process tree.
-    assert int(tool["timeout_seconds"]) == 0
+def test_sandbox_entry_point_declared() -> None:
+    """The pack must own the sandbox capability through its entry point.
+
+    The 2026-11-14 branding-session incident: the session selected
+    ``providers.capabilities.sandbox: lisa-pack-powershell`` but the pack
+    registered no ``lisa.extensions.sandbox`` entry point, so
+    ``discover_sandbox_implementations`` found nothing, ``ctx.sandbox_runner``
+    stayed ``None``, and every coding-pack contained run failed closed with
+    "no sandbox implementation is active". The entry point — not just the
+    selection — is what makes the pack a sandbox implementation.
+    """
+    import tomllib
+    from pathlib import Path
+
+    pyproject = Path(__file__).resolve().parents[3] / "pyproject.toml"
+    payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    entry_points = payload["project"]["entry-points"]
+    assert entry_points["lisa.extensions.sandbox"] == {
+        "powershell": "lisa_packs.powershell.sandbox:describe_sandbox"
+    }
+    from lisa_packs.powershell.sandbox import describe_sandbox
+
+    declared = describe_sandbox()
+    assert declared["pack_name"] == "lisa-pack-powershell"
+    assert declared["runner"].tool_id == "pwsh_argv_run"
